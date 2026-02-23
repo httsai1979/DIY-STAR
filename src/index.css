@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-apple-bg text-apple-text selection:bg-apple-accent selection:text-white overflow-x-hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .apple-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white shadow-apple rounded-apple transition-all duration-500 ease-out;
+  }
+  
+  .apple-card:hover {
+    @apply shadow-apple-hover scale-[1.01];
+  }
+
+  .apple-button {
+    @apply px-6 py-3 rounded-full font-semibold transition-all duration-300 active:scale-95 flex items-center justify-center;
+  }
+
+  .apple-button-primary {
+    @apply bg-apple-accent text-white hover:bg-opacity-90;
+  }
+
+  .apple-button-secondary {
+    @apply bg-zinc-200 text-zinc-900 hover:bg-zinc-300;
+  }
+
+  .glass-nav {
+    @apply sticky top-0 z-[100] bg-white/70 backdrop-blur-2xl border-b border-black/5;
+  }
+}
+
+/* Custom Scrollbar for Chrome/Safari */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+  background-clip: content-box;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
