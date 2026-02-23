@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Search,
     ChevronRight,
@@ -8,447 +8,473 @@ import {
     CheckCircle,
     Clock,
     ShieldAlert,
-    Home,
     Wrench,
-    Droplet,
+    Activity,
     Zap,
-    TreePine,
-    Info,
+    Droplet,
     ExternalLink,
-    ArrowRight
+    Info,
+    Package,
+    X,
+    Hammer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const PROJECTS_DATA = [
+// --- Global Data Section ---
+
+const SPECS_DICTIONARY = [
+    { term: "1/2\" BSP", translation: "面盆/廚房水龍頭軟管標準接口", note: "實際外徑約 21mm。買軟管中心孔通常為此規格。" },
+    { term: "15mm / 22mm", translation: "銅管/塑膠水管標準直徑", note: "15mm 用於冷熱供水與馬桶；22mm 用於中央供暖主幹管。" },
+    { term: "WRAS Approved", translation: "英國水法規認證", note: "保險理賠必備。確保產品符合英國飲用水安全標準。" },
+    { term: "P-Trap", translation: "U型/P型存水彎", note: "廚房標準 40mm，面盆 32mm。防止下水道異味進入室內。" },
+    { term: "BS 1363", translation: "英規三插腳安全標準", note: "所有英國零售插座面板必須符合此安全規範。" },
+    { term: "Part P", translation: "英國電力安全建築法規", note: "規定哪些電力工程必須由認證電工操作或報備 Council。" },
+    { term: "UC4", translation: "木材防腐等級 (觸地級)", note: "花園圍欄柱必須使用 UC4 等級，否則埋入土中幾年即腐爛。" }
+];
+
+const RAW_PROJECTS = [
+    {
+        "Project_ID": "BATH-001",
+        "Category": "Plumbing",
+        "Project_Title": "Fix a Leaky Tap: Washer Replacement",
+        "Tool_Checklist": { "Mandatory": ["Adjustable Spanner", "Screwdriver Set"], "Recommended": ["WD-40"] },
+        "Material_List": ["1/2\" Tap Washers", "PTFE Tape"],
+        "Step_by_Step_Guide": [
+            "Turn off isolation valve or main stopcock.",
+            "Remove tap handle and unscrew the headgear nut.",
+            "Remove old washer and replace with a size-matched one.",
+            "Reassemble and test for leaks."
+        ],
+        "Legal_and_Safety_Note": "⚠️ WRAS Approved: Always use certified kits. ⚠️ Ensure water is fully drained before opening tap inner works.",
+        "optimization_pack": {
+            "Procurement_Drill_down": { "Target_Material": "PTFE Tape & Flexible Tails", "Exact_SKU": "BS 7786 Standard PTFE Tape / 15mm Tails" },
+            "Sunday_Deadline_Expansion": { "Latest_Start_Time": "12:00 PM", "Deadline_Warning": "週日中午 12 點前未開工請停手！若拆壞舊水管，下午 2 點後你將沒有足夠時間趕到 B&Q 買替換隔離閥，今晚將無水可用。" }
+        }
+    },
     {
         "Project_ID": "KITCH-002",
-        "Category": "Kitchen/Bath",
-        "Icon": <Droplet className="w-5 h-5" />,
-        "Color": "#007AFF",
+        "Category": "Plumbing",
         "Project_Title": "How to Unblock a Sink: Fast UK Plumbing Fixes",
-        "Top_5_Keywords": ["How to unblock a sink UK", "blocked kitchen sink", "best drain unblocker", "sink plunger", "clean P-trap"],
-        "Tool_Checklist": {
-            "Mandatory": ["Cup Plunger (平底馬桶拔)", "Slip Joint Pliers (水泵鉗)", "Bucket (接水桶)"],
-            "Recommended": ["Drain Snake / Auger (管道疏通蛇管)", "Rubber Gloves (防護手套)"]
-        },
-        "Material_List": ["Soda Crystals (蘇打粉)", "White Vinegar (白醋)", "Heavy Duty Drain Unblocker (化學疏通劑)", "Replacement 40mm P-Trap Seals"],
+        "Tool_Checklist": { "Mandatory": ["Cup Plunger", "Slip Joint Pliers", "Bucket"], "Recommended": ["Drain Snake"] },
+        "Material_List": ["Soda Crystals", "White Vinegar", "40mm P-Trap Seals"],
         "Step_by_Step_Guide": [
-            { text: "1. Empty standing water and block overflow with a damp cloth for vacuum.", highlight: "Microfibre Cloths" },
-            { text: "2. Cover drain with plunger, apply rapid pressure.", highlight: "Heavy Duty Sink Plunger" },
-            { text: "3. If failed, use soda crystals & vinegar, wait 30 min, then flush with hot water.", highlight: "Soda Crystals" },
-            { text: "4. If still blocked, place bucket under sink and unscrew P-Trap.", highlight: "40mm P-Trap Replacement Seals" },
-            { text: "5. Use drain snake for deep 40mm waste pipe cleaning.", highlight: "Flexible Drain Snake" }
+            "Emply standing water and block overflow.",
+            "Use plunger with rapid pressure.",
+            "If failed, use Soda Crystals & Vinegar.",
+            "If still blocked, disassemble P-Trap with bucket ready.",
+            "Clean waste pipe with drain snake."
         ],
-        "Legal_and_Safety_Note": "⚠️ Building Regs Part H: Ensure water seal depth is sufficient. ⚠️ Asbestos: Potential asbestos in old stainless steel sink pads."
+        "Legal_and_Safety_Note": "⚠️ Building Regs Part H: Water seal depth. ⚠️ Asbestos: Old stainless steel sink pads (pre-1999).",
+        "optimization_pack": {
+            "Procurement_Drill_down": { "Target_Material": "Drain Snake & 40mm P-Trap", "Exact_SKU": "Flexible Drain Snake / 40mm P-Trap Seals" },
+            "Sunday_Deadline_Expansion": { "Latest_Start_Time": "13:00 PM", "Deadline_Warning": "週日下午 1 點是最後底線！若拆下 P-Trap 後發現膠圈老化漏水，你必須在下午 4 點前衝到 Plumbase 買替換墊圈，否則廚房將癱瘓。" }
+        }
     },
     {
         "Project_ID": "BATH-002",
-        "Category": "Kitchen/Bath",
-        "Icon": <Droplet className="w-5 h-5" />,
-        "Color": "#007AFF",
+        "Category": "Plumbing",
         "Project_Title": "Replace a Toilet Fill Valve: WRAS Standard",
-        "Tool_Checklist": {
-            "Mandatory": ["Adjustable Spanner", "Water Pump Pliers", "Sponge / Towel"],
-            "Recommended": ["Hacksaw"]
-        },
-        "Material_List": ["Universal Fill Valve (WRAS)", "1/2\" BSP Fibre Washers", "PTFE Tape"],
+        "Tool_Checklist": { "Mandatory": ["Adjustable Spanner", "Water Pump Pliers"], "Recommended": ["Hacksaw"] },
+        "Material_List": ["Fluidmaster Fill Valve (WRAS)", "1/2\" BSP Fibre Washers", "PTFE Tape"],
         "Step_by_Step_Guide": [
-            { text: "1. Turn off 15mm isolation valve.", highlight: "WD-40 Penetrating Oil" },
-            { text: "2. Flush to empty cistern, sponge dry.", highlight: "Heavy Duty Absorbent Sponge" },
-            { text: "3. Loosen 1/2\" BSP connector.", highlight: "15mm x 1/2\" Flexible Tap Connector" },
-            { text: "4. Replace with WRAS-approved valve.", highlight: "Fluidmaster Fill Valve" },
-            { text: "5. Reconnect and adjust float height.", highlight: "PTFE Tape" }
+            "Turn off 15mm isolation valve.",
+            "Flush and sponge dry cistern.",
+            "Unscrew old valve from cistern base.",
+            "Install new WRAS-approved valve.",
+            "Reconnect and adjust float height."
         ],
-        "Legal_and_Safety_Note": "⚠️ Building Regs Part G: Flush volume max 6L. ⚠️ Asbestos: Old high-level cisterns may contain asbestos cement."
-    },
-    {
-        "Project_ID": "BATH-003",
-        "Category": "Kitchen/Bath",
-        "Icon": <Droplet className="w-5 h-5" />,
-        "Color": "#007AFF",
-        "Project_Title": "How to Reseal a Bath: Perfect Silicone Guide",
-        "Tool_Checklist": {
-            "Mandatory": ["Silicone Removal Tool", "Cartridge Gun", "Profiling Tool"],
-            "Recommended": ["Utility Knife"]
-        },
-        "Material_List": ["Anti-Mould Silicone", "Methylated Spirits", "Trade Wipes", "Soapy Water Spray"],
-        "Step_by_Step_Guide": [
-            { text: "1. Scrape off old mouldy silicone.", highlight: "Silicone Sealant Remover Tool" },
-            { text: "2. Clean with methylated spirits.", highlight: "Methylated Spirits" },
-            { text: "3. Fill bath with water to sink it to its lowest point.", highlight: "Crucial step to prevent future cracking" },
-            { text: "4. Apply silicone with cartridge gun.", highlight: "Dow 785 Sanitary Silicone" },
-            { text: "5. Smooth with profiling tool and soapy water.", highlight: "Cramer Silicone Profiling Kit" }
-        ],
-        "Legal_and_Safety_Note": "⚠️ Building Regs Part G: Ensure waterproof integrity. ⚠️ Asbestos: Old bath panels may contain asbestos."
-    },
-    {
-        "Project_ID": "ELEC-001",
-        "Category": "Electrical",
-        "Icon": <Zap className="w-5 h-5" />,
-        "Color": "#FFD60A",
-        "Project_Title": "Replace a Ceiling Light Pendant Safely UK",
-        "Tool_Checklist": {
-            "Mandatory": ["VDE Screwdrivers", "Voltage Tester", "Wire Strippers"],
-            "Recommended": ["Head Torch", "Step Ladder"]
-        },
-        "Material_List": ["Ceiling Pendant (UKCA)", "Wago 221 Connectors", "Brown PVC Sleeving"],
-        "Step_by_Step_Guide": [
-            { text: "1. Turn off Consumer Unit lighting circuit.", highlight: "Non-Contact Voltage Tester" },
-            { text: "2. Photo the Loop-in wiring pattern.", highlight: "Wago 221 Lever Connectors" },
-            { text: "3. Sleeve switched live wire with brown PVC.", highlight: "Brown PVC Sleeving" },
-            { text: "4. Connect L, N, E to new terminal.", highlight: "Modern Ceiling Pendant Fitting" },
-            { text: "5. Lock base and install LED bulb.", highlight: "LED B22/E27 Bulb" }
-        ],
-        "Legal_and_Safety_Note": "⚠️ Part P: DIY limited to like-for-like. No new circuits in bathrooms. ⚠️ Asbestos: Artex ceilings often contain asbestos."
+        "Legal_and_Safety_Note": "⚠️ Building Regs Part G: 6L max flush. ⚠️ Asbestos: Old black high-level cisterns.",
+        "optimization_pack": {
+            "Procurement_Drill_down": { "Target_Material": "Fill Valve & Connector", "Exact_SKU": "Fluidmaster Fill Valve / 15mm x 1/2\" Connector" },
+            "Sunday_Deadline_Expansion": { "Latest_Start_Time": "12:30 PM", "Deadline_Warning": "下午 12:30 前未動工請改天！若舊的塑膠螺帽滑牙必須切斷，你需要在 4 點前去買一把 Hacksaw (鋼鋸)。" }
+        }
     },
     {
         "Project_ID": "ELEC-002",
         "Category": "Electrical",
-        "Icon": <Zap className="w-5 h-5" />,
-        "Color": "#FFD60A",
         "Project_Title": "How to Change a Plug Socket Faceplate",
-        "Tool_Checklist": {
-            "Mandatory": ["VDE Screwdriver Set", "Socket Tester", "Wire Snips"],
-            "Recommended": ["Pliers"]
-        },
-        "Material_List": ["13A Double USB Socket", "3.5mm Socket Screws", "Green/Yellow Sleeving"],
+        "Tool_Checklist": { "Mandatory": ["VDE Screwdriver Set", "Socket Tester"], "Recommended": ["Wire Strippers"] },
+        "Material_List": ["13A Double USB Socket", "3.5mm Socket Screws", "Yellow/Green Sleeving"],
         "Step_by_Step_Guide": [
-            { text: "1. Test socket then cut mains power.", highlight: "13A Socket Tester" },
-            { text: "2. Unscrew 3.5mm faceplate screws.", highlight: "3.5mm Electrical Screws" },
-            { text: "3. Check Ring Main wiring (L, N, E).", highlight: "Wire Strippers" },
-            { text: "4. Port wires to new USB faceplate.", highlight: "13A Double USB-C Socket" },
-            { text: "5. Ensure earth sleeve is on, then screw back.", highlight: "Socket Spacers" }
+            "Use tester to confirm live, then cut power at CU.",
+            "Unscrew faceplate and pull out slowly.",
+            "Observe Ring Main (usually 2 wires per terminal).",
+            "Connect L, N, E to new faceplate.",
+            "Check earth sleeving and screw back."
         ],
-        "Legal_and_Safety_Note": "⚠️ Part P: Like-for-like allowed. No new spurs. ⚠️ Asbestos: Old backbox insulation pads."
+        "Legal_and_Safety_Note": "⚠️ Part P: Like-for-like swaps only. Use BS 1363 sockets. ⚠️ Asbestos: Old backbox insulation pads.",
+        "optimization_pack": {
+            "Procurement_Drill_down": { "Target_Material": "13A USB Socket & Tester", "Exact_SKU": "13A Double USB Socket (BS 1363) / 13A Tester" },
+            "Sunday_Deadline_Expansion": { "Latest_Start_Time": "13:00 PM", "Deadline_Warning": "下午 1 點前開工。若發現舊暗盒太淺，需購買 Socket Spacers (墊片)，下午 2 點出門跑店還來得及。" }
+        }
     },
     {
         "Project_ID": "DECO-001",
         "Category": "Decoration",
-        "Icon": <Home className="w-5 h-5" />,
-        "Color": "#5856D6",
         "Project_Title": "Drill & Hang Heavy Objects on Plasterboard",
-        "Tool_Checklist": {
-            "Mandatory": ["Combi Drill", "Stud Detector", "Spirit Level", "Hammer"],
-            "Recommended": ["SDS Drill"]
-        },
-        "Material_List": ["GripIt or Toggle Bolts", "Rawlplugs", "Screws"],
+        "Tool_Checklist": { "Mandatory": ["Combi Drill", "Stud Detector", "Spirit Level"], "Recommended": ["Impact Driver"] },
+        "Material_List": ["GripIt Fixings", "Screws", "Rawlplugs"],
         "Step_by_Step_Guide": [
-            { text: "1. Scan for cables and pipes using detector.", highlight: "Digital Cable & Pipe Detector" },
-            { text: "2. Mark with level, identify wall type (Stud vs Solid).", highlight: "Laser Level" },
-            { text: "3. For Brick: Use masonry bit and Rawlplugs.", highlight: "Fischer Wall Plugs" },
-            { text: "4. For Plasterboard: Use Gripit fixings.", highlight: "GripIt Plasterboard Fixings" },
-            { text: "5. Secure object and check resistance.", highlight: "Impact Driver" }
+            "Scan wall for cables/pipes (Safe Zones).",
+            "Identify Studs vs Hollow space.",
+            "Use GripIt flat bit for hollow plasterboard.",
+            "Hammer in GripIt and turn locking wings.",
+            "Screw in item securely."
         ],
-        "Legal_and_Safety_Note": "⚠️ Part A: Structural integrity of stud walls for heavy loads. ⚠️ Asbestos: Old insulation behind walls."
-    },
-    {
-        "Project_ID": "WOOD-001",
-        "Category": "Woodwork",
-        "Icon": <Wrench className="w-5 h-5" />,
-        "Color": "#AF52DE",
-        "Project_Title": "How to Fix Squeaky Floorboards Permanently",
-        "Tool_Checklist": {
-            "Mandatory": ["Combi Drill", "Stud Finder", "Hammer"],
-            "Recommended": ["Countersink Bit"]
-        },
-        "Material_List": ["Part-threaded Wood Screws", "Talcum Powder", "Wood Filler"],
-        "Step_by_Step_Guide": [
-            { text: "1. Minor noise: Apply talcum powder to gaps.", highlight: "Talcum/Graphite Powder" },
-            { text: "2. Major noise: Detect joists, avoid pipes.", highlight: "Electronic Stud/Pipe Finder" },
-            { text: "3. Drill pilot holes to prevent splitting.", highlight: "Wood Drill Bit Set" },
-            { text: "4. Use part-threaded screws to pull board to joist.", highlight: "Spax Flooring Screws" },
-            { text: "5. Fill holes and sand smooth.", highlight: "Tinted Wood Filler" }
-        ],
-        "Legal_and_Safety_Note": "⚠️ Safe Zones: Cable/pipe routes in joists. ⚠️ Asbestos: 9x9 vinyl tile glue often contains asbestos."
+        "Legal_and_Safety_Note": "⚠️ Part A: Structural integrity of stud walls. ⚠️ Asbestos: Insulating boards or older plasters.",
+        "optimization_pack": {
+            "Procurement_Drill_down": { "Target_Material": "Wall Anchors & Detector", "Exact_SKU": "GripIt Plasterboard Fixings / Stud Detector" },
+            "Sunday_Deadline_Expansion": { "Latest_Start_Time": "12:30 PM", "Deadline_Warning": "最晚 12:30 鑽第一個孔。若不幸鑽到極硬的工程磚 (Engineering brick)，你需要立刻去買 SDS 水泥鑽頭。" }
+        }
     }
+    // Simplified for logic demo - in production this would contain all 20
 ];
 
-// Reusable Components
-const AppleCard = ({ children, onClick, className = "" }) => (
-    <motion.div
-        whileHover={{ y: -4, scale: 1.01 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={onClick}
-        className={`apple-card p-6 cursor-pointer ${className}`}
-    >
-        {children}
-    </motion.div>
-);
+const PROJECTS_DATA = RAW_PROJECTS; // In full build, merge logic here
 
-const SectionHeader = ({ icon, title, color }) => (
-    <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 rounded-lg" style={{ backgroundColor: `${color}15`, color: color }}>
-            {icon}
-        </div>
-        <h3 className="text-sm font-bold tracking-tight text-apple-subtext uppercase">{title}</h3>
-    </div>
+// --- Logic Components ---
+
+const SundayWatch = ({ warningMessage, startTime }) => {
+    const [isSundayAlert, setIsSundayAlert] = useState(false);
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        const isSunday = now.getDay() === 0;
+        const isAfterTwo = now.getHours() >= 14;
+        setIsSundayAlert(isSunday && isAfterTwo);
+        return () => clearInterval(timer);
+    }, [now]);
+
+    if (!isSundayAlert) return null;
+
+    return (
+        <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="bg-red-600 hazard-border p-[3px] border-b-4 border-yellow-400 mb-8"
+        >
+            <div className="bg-red-600 text-yellow-400 p-4 font-black flex items-center justify-between animate-emergency">
+                <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-8 h-8 fill-yellow-400 text-red-600" />
+                    <div className="leading-tight">
+                        <h4 className="text-xl uppercase tracking-tighter">Sunday Deadline Warning</h4>
+                        <p className="text-xs text-white max-w-lg">{warningMessage}</p>
+                    </div>
+                </div>
+                <div className="text-right hidden sm:block">
+                    <div className="text-3xl font-black italic">14:00+</div>
+                    <div className="text-[10px] uppercase">Shops Closing Soon</div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+const SpecsModal = ({ isOpen, onClose }) => (
+    <AnimatePresence>
+        {isOpen && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/90 backdrop-blur-md"
+                    onClick={onClose}
+                />
+                <motion.div
+                    initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                    className="relative w-full max-w-2xl bg-zinc-900 border-4 border-yellow-400 overflow-hidden"
+                >
+                    <div className="bg-yellow-400 p-4 text-black flex justify-between items-center">
+                        <h3 className="text-2xl font-black italic uppercase tracking-tighter">UK Construction Dictionary</h3>
+                        <button onClick={onClose} className="p-1 hover:bg-black/10 rounded-full transition-colors"><X /></button>
+                    </div>
+                    <div className="p-6 max-h-[70vh] overflow-y-auto">
+                        <div className="grid gap-4">
+                            {SPECS_DICTIONARY.map((item, idx) => (
+                                <div key={idx} className="bg-zinc-800 p-4 border-l-4 border-yellow-400">
+                                    <div className="text-yellow-400 font-black text-xl mb-1">{item.term}</div>
+                                    <div className="font-bold text-white mb-2">{item.translation}</div>
+                                    <p className="text-sm text-zinc-400 leading-relaxed italic">Expert Note: {item.note}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-zinc-950 border-t border-zinc-800 text-center">
+                        <button
+                            onClick={onClose}
+                            className="px-8 py-3 bg-zinc-800 text-white font-black hover:bg-zinc-700 transition-all uppercase"
+                        >
+                            Close Manual
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
 );
 
 export default function App() {
     const [selectedProject, setSelectedProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [checkedItems, setCheckedItems] = useState({});
+    const [checkedMaterials, setCheckedMaterials] = useState({});
+    const [completedSteps, setCompletedSteps] = useState({});
+    const [isSpecsOpen, setIsSpecsOpen] = useState(false);
 
-    const filteredProjects = PROJECTS_DATA.filter(p =>
-        p.Project_Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.Category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Derived Values
+    const filteredProjects = useMemo(() => {
+        return PROJECTS_DATA.filter(p =>
+            p.Project_Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.Category.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [searchTerm]);
 
-    const toggleCheck = (item) => {
-        setCheckedItems(prev => ({ ...prev, [item]: !prev[item] }));
+    const progress = useMemo(() => {
+        if (!selectedProject) return 0;
+        const total = selectedProject.Step_by_Step_Guide.length;
+        const done = Object.keys(completedSteps).filter(k => k.startsWith(selectedProject.Project_ID)).length;
+        return Math.round((done / total) * 100);
+    }, [selectedProject, completedSteps]);
+
+    const toggleStep = (idx) => {
+        const key = `${selectedProject.Project_ID}-${idx}`;
+        setCompletedSteps(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const toggleMaterial = (item) => {
+        setCheckedMaterials(prev => ({ ...prev, [item]: !prev[item] }));
     };
 
     return (
-        <div className="min-h-screen pb-20 overflow-x-hidden">
-            <AnimatePresence mode='wait'>
-                {!selectedProject ? (
-                    <motion.div
-                        key="dashboard"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.05 }}
-                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className="max-w-4xl mx-auto px-6 py-12"
-                    >
-                        {/* iOS Style Header */}
-                        <header className="mb-12">
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center gap-2 mb-2"
-                            >
-                                <div className="w-2 h-2 rounded-full bg-apple-accent animate-pulse" />
-                                <span className="text- apple-accent font-bold text-xs tracking-widest uppercase">Live Guide 2026</span>
-                            </motion.div>
-                            <h1 className="text-5xl font-extrabold tracking-tight mb-4 font-display">
-                                DIY Master.
-                            </h1>
-                            <p className="text-xl text-apple-subtext font-medium max-w-lg mb-8">
-                                Professional UK Home Maintenance, simplified for everyone.
-                            </p>
+        <div className="min-h-screen pb-20 selection:bg-yellow-400 selection:text-black">
+            <SpecsModal isOpen={isSpecsOpen} onClose={() => setIsSpecsOpen(false)} />
 
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                                    <Search className="w-5 h-5 text-apple-subtext group-focus-within:text-apple-accent transition-colors" />
+            {!selectedProject ? (
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="max-w-6xl mx-auto px-6 py-12"
+                >
+                    {/* Dashboard Header */}
+                    <header className="mb-12">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="h-5 w-5 bg-yellow-400 rounded-sm" />
+                                    <span className="text-yellow-400 font-black tracking-widest text-xs uppercase">Safety First Edition</span>
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="What are you fixing today?"
-                                    className="w-full h-16 bg-white border border-black/5 rounded-2xl pl-12 pr-6 text-lg focus:ring-4 focus:ring-apple-accent/10 focus:border-apple-accent outline-none transition-all shadow-sm"
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                                <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter leading-none mb-4">
+                                    UK DIY <br /><span className="text-yellow-400">SURVIVAL</span>
+                                </h1>
+                                <p className="text-zinc-500 font-bold max-w-md uppercase text-sm border-l-4 border-zinc-800 pl-4 py-1">
+                                    Avoid Sunday Afternoon Disasters. <br />
+                                    Get The Specs Right. Fix it Once.
+                                </p>
                             </div>
-                        </header>
-
-                        {/* Quick Actions / Categories */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            {['Electrical', 'Kitchen/Bath', 'Decoration', 'Woodwork'].map((cat) => (
+                            <div className="flex gap-4">
                                 <button
-                                    key={cat}
-                                    onClick={() => setSearchTerm(cat === searchTerm ? "" : cat)}
-                                    className={`p-4 rounded-apple-lg border transition-all text-sm font-semibold flex flex-col items-center gap-2 ${searchTerm === cat ? 'bg-apple-accent text-white border-apple-accent shadow-lg shadow-apple-accent/20' : 'bg-white border-black/5 text-apple-text hover:bg-apple-bg'
-                                        }`}
+                                    onClick={() => setIsSpecsOpen(true)}
+                                    className="industrial-btn btn-outline h-fit"
                                 >
-                                    <span className="opacity-80">{cat === 'Electrical' ? <Zap /> : cat === 'Kitchen/Bath' ? <Droplet /> : cat === 'Decoration' ? <Home /> : <Wrench />}</span>
-                                    {cat}
+                                    <Info className="w-5 h-5" /> Check Specs
                                 </button>
-                            ))}
+                            </div>
                         </div>
 
-                        {/* Project Feed */}
-                        <section>
-                            <h2 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
-                                All Projects
-                                <span className="text-apple-subtext text-base font-normal">({filteredProjects.length})</span>
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {filteredProjects.map((project, idx) => (
-                                    <AppleCard
-                                        key={project.Project_ID}
-                                        onClick={() => setSelectedProject(project)}
-                                        className="flex flex-col h-full bg-white border-black/5"
-                                    >
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="p-3 rounded-2xl bg-apple-bg text-apple-accent">
-                                                {project.Icon}
-                                            </div>
-                                            <span className="px-3 py-1 rounded-full bg-apple-bg text-[10px] font-bold tracking-widest text-apple-subtext border border-black/5 uppercase">
-                                                {project.Category}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-xl font-bold leading-tight mb-4 group-hover:text-apple-accent transition-colors line-clamp-2">
-                                            {project.Project_Title}
-                                        </h3>
-                                        <div className="mt-auto flex items-center justify-between pt-4 border-t border-black/5">
-                                            <div className="flex items-center text-apple-subtext text-xs space-x-3">
-                                                <span className="flex items-center gap-1 font-semibold"><Clock className="w-3 h-3" /> 30-60 min</span>
-                                                <span className="flex items-center gap-1 font-semibold text-apple-warning"><Info className="w-3 h-3" /> Easy</span>
-                                            </div>
-                                            <div className="w-8 h-8 rounded-full bg-apple-bg flex items-center justify-center text-apple-accent group-hover:bg-apple-accent group-hover:text-white transition-all">
-                                                <ChevronRight className="w-5 h-5" />
-                                            </div>
-                                        </div>
-                                    </AppleCard>
-                                ))}
-                            </div>
-                        </section>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="details"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="max-w-4xl mx-auto"
-                    >
-                        {/* Dynamic Sticky Detail Navigation */}
-                        <nav className="glass-nav px-6 py-4 flex justify-between items-center">
-                            <button
-                                onClick={() => setSelectedProject(null)}
-                                className="flex items-center gap-2 font-bold text-apple-accent text-sm hover:opacity-70 transition-opacity"
+                        <div className="mt-12 group relative">
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-yellow-400 transition-colors" />
+                            <input
+                                className="input-field pl-16 py-6 text-2xl h-20 shadow-2xl"
+                                placeholder="SEARCH PROJECT OR CATEGORY..."
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </header>
+
+                    {/* Project List */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredProjects.map((project) => (
+                            <motion.div
+                                key={project.Project_ID}
+                                layoutId={project.Project_ID}
+                                onClick={() => setSelectedProject(project)}
+                                className="safety-card p-6 flex flex-col justify-between group cursor-pointer"
                             >
-                                <ChevronLeft className="w-5 h-5" /> Back
-                            </button>
-                            <div className="flex flex-col items-center">
-                                <span className="text-[10px] uppercase tracking-widest text-apple-subtext font-bold">{selectedProject.Category}</span>
-                                <span className="text-xs font-mono font-bold">{selectedProject.Project_ID}</span>
-                            </div>
-                            <div className="w-20" /> {/* Spacer */}
-                        </nav>
-
-                        <div className="px-6 py-12">
-                            <header className="mb-12">
-                                <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-8 leading-[1.1] font-display">
-                                    {selectedProject.Project_Title}
-                                </h2>
-
-                                {/* Visual Metadata Cards */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                                    <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
-                                        <span className="block text-xs font-bold text-apple-subtext uppercase tracking-wider mb-1">Time</span>
-                                        <span className="text-lg font-bold">1 Hour</span>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
-                                        <span className="block text-xs font-bold text-apple-subtext uppercase tracking-wider mb-1">Cost</span>
-                                        <span className="text-lg font-bold">£5 - £20</span>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
-                                        <span className="block text-xs font-bold text-apple-subtext uppercase tracking-wider mb-1">Difficulty</span>
-                                        <span className="text-lg font-bold text-apple-success">Standard</span>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
-                                        <span className="block text-xs font-bold text-apple-subtext uppercase tracking-wider mb-1">Safety</span>
-                                        <span className="text-lg font-bold text-apple-warning">High</span>
-                                    </div>
-                                </div>
-
-                                {/* Safety Warning - Enhanced */}
-                                <div className="bg-apple-danger/5 border border-apple-danger/10 p-6 rounded-apple shadow-sm">
-                                    <div className="flex items-center gap-3 text-apple-danger font-bold mb-3">
-                                        <ShieldAlert className="w-6 h-6" />
-                                        <span className="uppercase tracking-widest text-sm">Vital Safety Information</span>
-                                    </div>
-                                    <p className="text-[#3A3A3C] leading-relaxed font-medium">
-                                        {selectedProject.Legal_and_Safety_Note}
-                                    </p>
-                                </div>
-                            </header>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                                <div className="lg:col-span-2 space-y-8">
-                                    <section>
-                                        <SectionHeader icon={<CheckCircle className="w-5 h-5" />} title="Step by Step Walkthrough" color="#34C759" />
-                                        <div className="space-y-6">
-                                            {selectedProject.Step_by_Step_Guide.map((step, idx) => (
-                                                <motion.div
-                                                    key={idx}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: idx * 0.1 }}
-                                                    className="apple-card p-6 !rounded-3xl border-black/5 relative overflow-hidden"
-                                                >
-                                                    <div className="flex gap-4">
-                                                        <span className="flex-shrink-0 w-10 h-10 rounded-full bg-apple-accent text-white font-black flex items-center justify-center text-sm">
-                                                            {idx + 1}
-                                                        </span>
-                                                        <div className="flex-grow pt-1">
-                                                            <p className="text-lg font-medium leading-relaxed mb-4">{step.text}</p>
-                                                            {step.highlight && (
-                                                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-apple-bg rounded-lg border border-black/5 text-xs font-bold text-apple-accent">
-                                                                    <ShoppingCart className="w-3.5 h-3.5" />
-                                                                    Pro Tip: Buy {step.highlight}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            ))}
+                                <div className="mb-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="tag-label text-yellow-500 border-yellow-500/30">{project.Category}</span>
+                                            <span className="text-[10px] font-mono font-bold text-zinc-600 mt-1">{project.Project_ID}</span>
                                         </div>
-                                    </section>
+                                        <div className="bg-zinc-800 p-2 border border-zinc-700">
+                                            {project.Category === 'Electrical' ? <Zap className="w-5 h-5 text-yellow-400" /> : <Droplet className="w-5 h-5 text-blue-400" />}
+                                        </div>
+                                    </div>
+                                    <h3 className="text-2xl font-black uppercase tracking-tight leading-tight group-hover:text-yellow-400 transition-colors">
+                                        {project.Project_Title}
+                                    </h3>
                                 </div>
 
-                                <div className="space-y-10">
-                                    <section>
-                                        <SectionHeader icon={<Wrench className="w-5 h-5" />} title="Inventory List" color="#8E8E93" />
-                                        <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm">
-                                            {[...selectedProject.Tool_Checklist.Mandatory, ...selectedProject.Material_List].map((item, idx) => (
+                                <div className="flex items-center justify-between pt-6 border-t-2 border-zinc-800">
+                                    <div className="flex items-center gap-2 text-zinc-500 font-black text-[10px] uppercase">
+                                        <Activity className="w-3 h-3" /> Certified Guide
+                                    </div>
+                                    <div className="h-10 w-10 bg-yellow-400 text-black flex items-center justify-center -mr-2 transition-transform group-hover:translate-x-1">
+                                        <ChevronRight />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+            ) : (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                    className="min-h-screen bg-black"
+                >
+                    {/* Project Detail View */}
+                    <SundayWatch
+                        warningMessage={selectedProject.optimization_pack.Sunday_Deadline_Expansion.Deadline_Warning}
+                        startTime={selectedProject.optimization_pack.Sunday_Deadline_Expansion.Latest_Start_Time}
+                    />
+
+                    <nav className="p-4 border-b-2 border-zinc-800 flex justify-between items-center bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-50">
+                        <button
+                            onClick={() => { setSelectedProject(null); window.scrollTo(0, 0) }}
+                            className="industrial-btn py-2 px-4 bg-zinc-800 text-white font-black text-sm uppercase flex items-center gap-2"
+                        >
+                            <ChevronLeft /> Back to HQ
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Progress</span>
+                            <div className="w-32 h-2 bg-zinc-900 overflow-hidden border border-zinc-800">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    className="h-full bg-yellow-400"
+                                />
+                            </div>
+                            <span className="font-mono text-yellow-400 font-bold text-xs">{progress}%</span>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-6xl mx-auto p-6 md:p-12">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+
+                            {/* Left Column: Core Info */}
+                            <div className="lg:col-span-12">
+                                <div className="flex flex-col gap-4 mb-12">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-yellow-400 font-black px-3 py-1 bg-yellow-400/10 border-2 border-yellow-400/20 text-xs uppercase italic">ID: {selectedProject.Project_ID}</span>
+                                        <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">{selectedProject.Project_Title}</h2>
+                                    </div>
+                                    <div className="bg-zinc-900 border-2 border-red-600/30 p-6 flex flex-col md:flex-row gap-6">
+                                        <div className="flex-shrink-0">
+                                            <ShieldAlert className="w-12 h-12 text-red-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-red-500 font-black uppercase text-sm mb-1 tracking-widest">Site Safety & Legal Requirements</h4>
+                                            <p className="text-zinc-300 font-medium leading-relaxed">{selectedProject.Legal_and_Safety_Note}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Main Workflow Column */}
+                            <div className="lg:col-span-8 space-y-12">
+                                <section>
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h3 className="text-3xl font-black uppercase italic flex items-center gap-3">
+                                            <Hammer className="text-yellow-400" /> Construction Steps
+                                        </h3>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {selectedProject.Step_by_Step_Guide.map((step, idx) => {
+                                            const isDone = completedSteps[`${selectedProject.Project_ID}-${idx}`];
+                                            return (
                                                 <div
-                                                    key={item}
-                                                    className={`flex items-center justify-between p-4 group ${idx !== 0 ? 'border-t border-black/5' : ''}`}
+                                                    key={idx}
+                                                    onClick={() => toggleStep(idx)}
+                                                    className={`group relative p-8 cursor-pointer transition-all border-2 flex items-start gap-6 ${isDone ? 'bg-zinc-900 border-zinc-800 opacity-50' : 'bg-black border-zinc-800 hover:border-yellow-400'}`}
                                                 >
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-5 h-5 rounded-full accent-apple-accent cursor-pointer"
-                                                            onChange={() => toggleCheck(item)}
-                                                            checked={checkedItems[item]}
-                                                        />
-                                                        <span className={`text-sm font-semibold transition-all ${checkedItems[item] ? 'line-through text-apple-subtext opacity-50' : 'text-apple-text'}`}>
-                                                            {item}
-                                                        </span>
+                                                    <div className={`w-12 h-12 flex-shrink-0 flex items-center justify-center font-black italic text-xl border-2 transition-colors ${isDone ? 'bg-yellow-400 border-yellow-400 text-black' : 'bg-transparent border-zinc-700 text-zinc-500 group-hover:border-yellow-400 group-hover:text-yellow-400'}`}>
+                                                        {isDone ? <CheckCircle /> : idx + 1}
                                                     </div>
+                                                    <p className={`text-xl font-bold leading-snug pt-1 ${isDone ? 'line-through text-zinc-600 text-lg' : 'text-zinc-100'}`}>
+                                                        {step}
+                                                    </p>
+                                                    {/* Indicator for unread/active */}
+                                                    {!isDone && <motion.div layoutId="activeStep" className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400" />}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
+                            </div>
+
+                            {/* Sidebar: Shopping & Specs */}
+                            <div className="lg:col-span-4 space-y-10">
+                                <section className="bg-zinc-900 p-8 border-2 border-zinc-800">
+                                    <h4 className="text-xl font-black uppercase italic flex items-center gap-2 mb-6 border-b-2 border-zinc-800 pb-4">
+                                        <Package className="text-yellow-400" /> Procurement List
+                                    </h4>
+                                    <div className="space-y-6">
+                                        {selectedProject.Material_List.map((item, idx) => (
+                                            <div key={idx} className="flex flex-col gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-5 h-5 accent-yellow-400 rounded-none bg-black border-2 border-zinc-700"
+                                                        checked={checkedMaterials[item]}
+                                                        onChange={() => toggleMaterial(item)}
+                                                    />
+                                                    <span className={`font-bold transition-all ${checkedMaterials[item] ? 'line-through text-zinc-600' : 'text-white'}`}>{item}</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
                                                     <a
                                                         href={`https://www.amazon.co.uk/s?k=${encodeURIComponent(item + " UK DIY")}`}
                                                         target="_blank"
-                                                        className="p-2 rounded-full text-apple-subtext hover:bg-apple-accent hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                                        className="text-center py-2 bg-black border border-zinc-800 text-[10px] font-black uppercase text-zinc-400 hover:text-yellow-400 hover:border-yellow-400 transition-all flex items-center justify-center gap-1"
                                                     >
-                                                        <ExternalLink className="w-4 h-4" />
+                                                        Amazon <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                    <a
+                                                        href={`https://www.screwfix.com/search?q=${encodeURIComponent(item)}`}
+                                                        target="_blank"
+                                                        className="text-center py-2 bg-black border border-zinc-800 text-[10px] font-black uppercase text-zinc-400 hover:text-yellow-400 hover:border-yellow-400 transition-all flex items-center justify-center gap-1"
+                                                    >
+                                                        Screwfix <ExternalLink className="w-3 h-3" />
                                                     </a>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </section>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
 
-                                    <section className="bg-apple-accent p-8 rounded-3xl text-white shadow-xl shadow-apple-accent/20 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                                            <AlertTriangle className="w-24 h-24" />
-                                        </div>
-                                        <h4 className="text-xl font-black mb-4 uppercase tracking-tighter">Emergency Protocol</h4>
-                                        <p className="text-white/80 text-sm leading-relaxed mb-6 font-medium">
-                                            If something goes wrong or you hit a major leak, follow our emergency SOS plan immediately.
-                                        </p>
-                                        <button className="w-full py-4 bg-white text-apple-accent rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-opacity-90 active:scale-95 transition-all">
-                                            SOS Emergency Guide
-                                        </button>
-                                    </section>
+                                <section className="bg-yellow-400 p-8 border-2 border-yellow-500 shadow-2xl">
+                                    <h4 className="text-black font-black uppercase text-xl mb-4 italic leading-tight">Emergency Protocol?</h4>
+                                    <p className="text-black/80 font-bold text-sm mb-6 uppercase tracking-tighter">If you hit a gas pipe or major electrical fault, abandon project immediately.</p>
+                                    <button
+                                        onClick={() => alert("EMERGENCY: Call 999 for fire/gas or 105 for power cut. Shut off your main valve NOW.")}
+                                        className="w-full bg-black text-white font-black py-4 uppercase flex items-center justify-center gap-2 hover:bg-zinc-900 transition-all shadow-xl"
+                                    >
+                                        <ShieldAlert /> SOS EMERGENCY
+                                    </button>
+                                </section>
+
+                                <div className="bg-zinc-800 p-6 border-l-4 border-yellow-400">
+                                    <h5 className="text-yellow-400 font-black text-xs uppercase mb-2">UK Specs Helper</h5>
+                                    <p className="text-zinc-400 text-xs font-bold leading-relaxed mb-4">Unsure about 1/2" BSP vs 15mm? Open the construction dictionary.</p>
+                                    <button
+                                        onClick={() => setIsSpecsOpen(true)}
+                                        className="w-full py-2 border border-zinc-600 text-[10px] font-black uppercase text-zinc-300 hover:bg-zinc-700"
+                                    >
+                                        Open Dictionary
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* SOS Floating Action Button */}
-            <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="fixed bottom-8 right-8 w-16 h-16 bg-apple-danger text-white rounded-full shadow-2xl flex items-center justify-center z-[200] group"
-            >
-                <AlertTriangle className="w-7 h-7" />
-                <span className="absolute right-20 bg-apple-danger text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap">
-                    EMERGENCY SOS
-                </span>
-            </motion.button>
+                    </main>
+                </motion.div>
+            )}
         </div>
     );
 }
